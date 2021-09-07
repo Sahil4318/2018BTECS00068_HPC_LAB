@@ -1,0 +1,147 @@
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <math.h> 
+#include <string.h> 
+#define SEED 35791246 
+ 
+int main() 
+{ 
+   int niter=0; 
+   int count=0; 
+ 
+   printf("Enter the number of iterations used to estimate pi: "); 
+   scanf("%d",&niter); 
+ 
+   srand(SEED); 
+    
+   double x,y,z;
+   
+   #pragma omp parallel for  shared(niter) schedule(static,100) reduction(+: count)
+   for (int i=0; i<niter; i++) { 
+   
+      x = (double)rand()/RAND_MAX; 
+      y = (double)rand()/RAND_MAX; 
+      
+      z = x*x+y*y; 
+      
+      if (z<=1) 
+	  	count++; 
+    } 
+   double pi=(double)count/niter*4; 
+   printf("# of trials= %d , estimate of pi is %g \n",niter,pi); 
+}
+
+
+
+
+
+#include <omp.h> 
+#include <stdio.h> 
+#include <stdlib.h> 
+ 
+#define N 75             /* number of rows in matrix A */ 
+#define P 75                /* number of columns in matrix A */ 
+#define M 75                 /* number of columns in matrix B */ 
+ 
+int main (int argc, char *argv[]) 
+{ 
+int  tid, nthreads, i, j, k; 
+double a[N][P], b[P][M], c[N][M]; 
+omp_set_num_threads(8);
+ double time = omp_get_wtime();
+/*** Create a parallel region explicitly scoping all variables ***/ 
+#pragma omp parallel shared(a,b,c,nthreads) private(tid,i,j,k) 
+  { 
+
+  tid = omp_get_thread_num(); 
+  if (tid == 0) 
+    { 
+    nthreads = omp_get_num_threads(); 
+    printf("Starting matrix multiple example with %d threads\n",nthreads); 
+    printf("Initializing matrices...\n"); 
+    } 
+  /*** Initialize matrices ***/ 
+  #pragma omp for 
+  for (i=0; i<N; i++) 
+    for (j=0; j<P; j++) 
+      a[i][j]= i+j; 
+      
+  #pragma omp for 
+  for (i=0; i<P; i++) 
+    for (j=0; j<M; j++) 
+      b[i][j]= i*j; 
+      
+  #pragma omp for 
+  for (i=0; i<N; i++) 
+    for (j=0; j<M; j++) 
+      c[i][j]= 0; 
+ 
+  /*** Do matrix multiply sharing iterations on outer loop ***/ 
+  /*** Display who does which iterations for demonstration purposes ***/ 
+  printf("Thread %d starting matrix multiply...\n",tid); 
+
+  #pragma omp for 
+  for (i=0; i<N; i++) 
+    { 
+    printf("Thread=%d did row=%d\n",tid,i); 
+    for(j=0; j<M; j++) 
+      for (k=0; k<P; k++) 
+        c[i][j] += a[i][k] * b[k][j]; 
+    } 
+  }   /*** End of parallel region ***/ 
+ 
+/*** Print results ***/ 
+printf("******************************************************\n"); 
+printf("Result Matrix:\n"); 
+for (i=0; i<N; i++) 
+  { 
+  for (j=0; j<M; j++) 
+    printf("%6.2f   ", c[i][j]); 
+  printf("\n"); 
+  } 
+printf("******************************************************\n"); 
+printf ("Done In %f Seconds",omp_get_wtime() - time); 
+printf("\n Using %d Threads",omp_get_max_threads());
+
+return(0); 
+}
+
+
+
+
+
+#include <omp.h>
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+		
+	vector<int>a(1000),b(1000),c(1000,0);
+	int count = 0;
+	double time = omp_get_wtime();
+	
+	#pragma omp parallel 
+	{
+		#pragma omp for nowait
+		for(int i=0;i<1000;i++)
+			a[i] = i;
+		
+		#pragma omp for nowait
+		for(int i=0;i<1000;i++)
+			b[i] = 1000 - i;
+	}
+	
+	#pragma omp parallel for reduction(+: count) schedule(dynamic,400)
+	for(int i=0;i<1000;i++) {
+		c[i] = a[i] + b[i];
+		count++;
+	}
+	
+
+	for(int i=0;i<1000;i++)
+		printf("%d ",c[i]);
+		
+	printf("\n \n %d No of times loop executed",count);
+	printf("\n Using %d no of threads and %f execution time",omp_get_max_threads(),omp_get_wtime() - time);
+	
+}
